@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Users from "./Components/Home";
 import AuthForm from "./Components/LoginPage";
+import CrudForm from "./Components/CRUDForm";
 import { supabase } from "./Components/supabaseClient";
 
 function App() {
@@ -25,7 +26,7 @@ function App() {
         <Users />
       ) : (
         // Render login page component if user is not logged in
-        <AuthForm  />
+        <CrudForm  />
       )}
     </div>
   );

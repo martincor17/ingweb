@@ -1,135 +1,173 @@
-import { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input } from "antd";
+import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
-const CrudPage = ({ tableName, columns }) => {
+function TableCRUD({ tableName, columns }) {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [visible, setVisible] = useState(false);
-  const [record, setRecord] = useState(null);
-
-  const fetchData = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from(tableName).select("*");
-    if (error) console.error(error);
-    else setData(data);
-    setLoading(false);
-  };
-
-  const handleAdd = () => {
-    setRecord(null);
-    setVisible(true);
-  };
-
-  const handleEdit = (record) => {
-    setRecord(record);
-    setVisible(true);
-  };
-
-  const handleDelete = async (record) => {
-    const { error } = await supabase.from(tableName).delete().eq("id", record.id);
-    if (error) console.error(error);
-    else fetchData();
-  };
-
-  const handleSave = async (values) => {
-    setVisible(false);
-    if (record) {
-      const { error } = await supabase.from(tableName).update(values).eq("id", record.id);
-      if (error) console.error(error);
-    } else {
-      const { error } = await supabase.from(tableName).insert(values);
-      if (error) console.error(error);
-    }
-    fetchData();
-  };
-
-  const handleCancel = () => {
-    setVisible(false);
-  };
-
-  const columnsToShow = columns.map((key) => ({
-    title: key,
-    dataIndex: key,
-    key: key,
-  }));
+  const [newRow, setNewRow] = useState({});
+  const [editingRow, setEditingRow] = useState(null);
+  const [editedRow, setEditedRow] = useState({});
 
   useEffect(() => {
+    async function fetchData() {
+      const { data: fetchedData } = await supabase.from(tableName).select("*");
+      setData(fetchedData);
+    }
     fetchData();
-  }, []);
+  }, [tableName]);
+
+  async function createRow() {
+    const { error } = await supabase
+      .from(tableName)
+      .insert(newRow)
+      .single();
+    if (error) {
+      console.error("Error creating row:", error);
+      return;
+    }
+    console.log("New", newRow)
+    console.log([...data, newRow])
+    setData([...data, newRow]);
+    setNewRow({});
+  }
+
+  async function updateRow(id, updatedData) {
+    const { error } = await supabase
+      .from(tableName)
+      .update(updatedData)
+      .eq("id", id);
+    if (error) {
+      console.error("Error updating row:", error);
+      return;
+    }
+    const updatedRows = data.map((row) =>
+      row.id === id ? { ...row, ...updatedData } : row
+    );
+    setData(updatedRows);
+    setEditingRow(null);
+  }
+
+  async function deleteRow(id) {
+    const { error } = await supabase.from(tableName).delete().eq("id", id);
+    if (error) {
+      console.error("Error deleting row:", error);
+      return;
+    }
+    const updatedRows = data.filter((row) => row.id !== id);
+    setData(updatedRows);
+  }
 
   return (
     <div>
-      <div style={{ marginBottom: "16px" }}>
-        <Button type="primary" onClick={handleAdd}>
-          Add
-        </Button>
-      </div>
-      <Table
-        dataSource={data}
-        columns={[...columnsToShow, { title: "Actions", key: "actions", render: (text, record) => (
-          <span>
-            <Button type="link" onClick={() => handleEdit(record)}>
-              Edit
-            </Button>
-            <Button type="link" danger onClick={() => handleDelete(record)}>
-              Delete
-            </Button>
-          </span>
-        ) }]}
-        loading={loading}
-        rowKey="id"
-      />
-      <Modal
-        title={record ? "Edit Record" : "Add Record"}
-        visible={visible}
-        onOk={() => {
-          const form = document.getElementById("recordForm");
-          form.dispatchEvent(new Event("submit"));
-        }}
-        onCancel={handleCancel}
-        okButtonProps={{ htmlType: "submit", form: "recordForm" }}
-      >
-        <Form id="recordForm" onFinish={handleSave} initialValues={record}>
-          {columns.map((key) => (
-            <Form.Item
-              key={key}
-              name={key}
-              rules={[{ required: true, message: `${key} is required` }]}
-            >
-              <Input />
-            </Form.Item>
-          ))}
-        </Form>
-      </Modal>
-    </div>
+      <h2>{tableName}</h2>
+      <table>
+        <thead>
+          <tr>
+            {columns.map((column) => (
+              <th key={column.name}>{column.name}</th>
+            ))}
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row) => {
+            // console.log(data)
+            return (
+              <tr key={row !== null ? row.id : 0}>
+                {columns.map((column) => {
+                  return (
+                    <td key={column?.name}>
+                      {row ? row[column.name] : "invalid"}
+                    </td>
+                  );
+                })}
+                <td>
+                  {editingRow === row.id ? (
+                    <>
+                      <button onClick={() => updateRow(row.id, newRow)}>
+                        Save
+                      </button>
+                      <button onClick={() => setEditingRow(null)}>
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditingRow(row.id);
+                          setEditedRow(row);
+                        }}
+                      >
+                        Edit
+                      </button>
+
+                      <button onClick={() => deleteRow(row.id)}>Delete</button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+          {editingRow === "new" && (
+            <tr>
+              {columns.map((column) => (
+                <td key={column.name}>
+                  <input
+                    type={column.type}
+                    value={newRow[column.name] || ""}
+                    onChange={(e) =>
+                      setNewRow({ ...newRow, [column.name]: e.target.value })
+                    }
+                  />
+                </td>
+              ))}
+              <td>
+                <button onClick={createRow}>Create</button>
+              </td>
+            </tr>
+          )}
+          {editingRow !== null && (
+            <tr>
+              {columns.map((column) => (
+                <td key={column.name}>
+                  <input
+                    type={column.type}
+                    value={editedRow[column.name] || ""}
+                    onChange={(e) =>
+                      setEditedRow({
+                        ...editedRow,
+                        [column.name]: e.target.value,
+                      })
+                    }
+                  />
+                </td>
+              ))}
+              <td>
+                <button onClick={() => updateRow(editedRow.id, editedRow)}>
+                  Save
+                </button>
+                <button onClick={() => setEditingRow(null)}>Cancel</button>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <button onClick={() => setEditingRow("new")}>Add row</button>
+    </div>  
   );
-};
+  function ResetButton() {
+    function handleResetClick() {
+      window.location.reload();
+    }
+  
+    return (
+      <button onClick={handleResetClick}>Reset</button>
+    );
+    
+  }
+  
+  
+}
 
-const SupabaseCrudApp = ({ columnNames }) => {
-  const [tableNames, setTableNames] = useState([]);
+export default TableCRUD;
 
-  const fetchTableNames = async () => {
-    const { data, error } = await supabase
-      .from("information_schema.tables")
-      .select("table_name")
-  .eq("table_schema", "public")
-  .eq("table_type", "BASE TABLE");
-if (error) console.error(error);
-else setTableNames(data.map((row) => row.table_name));
-};
-
-useEffect(() => {
-fetchTableNames();
-}, []);
-
-return (
-<div>
-{tableNames.map((tableName) => (
-<CrudPage key={tableName} tableName={tableName} columns={columnNames} />
-))}
-</div>
-);
-};
-
-export default SupabaseCrudApp;
