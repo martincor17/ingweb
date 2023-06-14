@@ -41,7 +41,7 @@ function App() {
   return (
     <div>
       {session ? (
-        isAdmin ? (
+        !isAdmin ? (
           <Core/>
         ) : (
           <CrudForm />
