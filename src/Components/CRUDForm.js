@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { supabase } from "./supabaseClient"; 
 import TableCRUD from "./Crud";
 import './TableCRUD.css';
+import NationalityRelationForm from "./NationAdd";
 
 const handleLogout = async () => {
   try {
@@ -44,8 +45,10 @@ const CrudForm = () => {
           { name: "budget", type: "number" },
         ]}
       />
+      <NationalityRelationForm/>
     </div>
   );
+  
 };
 
 export default CrudForm;

@@ -6,9 +6,17 @@ function Core() {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [players, setPlayers] = useState([]);
   const [topPlayers, setTopPlayers] = useState([]);
+  const[nation,setNation]=useState(null)
+  const [nationsAmount,setNationsAmount]=useState([]);
+  const [nationsRelation, setNationsRelation]=useState([]);
+  const [allPlayers, setAllPlayers]=useState([]);
+  const [topThreeNation,setTopThreeNation]=useState([]);
 
   useEffect(() => {
     fetchTeams();
+    fetchNations();
+    fetchPlayersNations();
+    fetchAllPlayers();
   }, []);
 
   useEffect(() => {
@@ -26,10 +34,37 @@ function Core() {
     }
   };
 
+  const fetchNations = async () => {
+    try {
+      const { data } = await supabase.from('nacionalidad').select('*');
+      setNationsAmount(data);
+    } catch (error) {
+      console.error('Error fetching nations:', error);
+    }
+  };
+
   const fetchPlayers = async (teamId) => {
     try {
       const { data } = await supabase.from('Jugadores').select('*');
       setPlayers(data);
+    } catch (error) {
+      console.error('Error fetching players:', error);
+    }
+  };
+
+  const fetchAllPlayers = async () => {
+    try {
+      const { data } = await supabase.from('Jugadores').select('*');
+      setAllPlayers(data);
+    } catch (error) {
+      console.error('Error fetching players:', error);
+    }
+  };
+
+  const fetchPlayersNations = async () => {
+    try {
+      const { data } = await supabase.from('nationality_relation').select('*');
+      setNationsRelation(data);
     } catch (error) {
       console.error('Error fetching players:', error);
     }
@@ -56,11 +91,41 @@ function Core() {
     setSelectedTeam(selectedTeam);
   };
 
+  const handleNationChange = (event) => {
+    const nationId = event.target.value;
+    setNation(nationId);
+  };
+
+  const handleCalculateTopPlayersNation = () => {
+    if (nation) {
+      const nationality = nationsAmount.find((nationality) => nationality.id == nation);
+      console.log("nationality: " + nationality.nation_name);
+      
+      const nationalityFilter = nationsRelation.filter((relation) => relation.id_nation == nationality.id);
+      console.log("nationsRelation: ", nationsRelation);
+      console.log("nationalityFilter: ", nationalityFilter);
+      
+      const playerIds = nationalityFilter.map((filter) => filter.id_player);
+      const searchedPlayers = allPlayers.filter((player) => playerIds.includes(player.id));
+      console.log("searchedPlayers: ", searchedPlayers);
+      
+      const sortedPlayers = [...searchedPlayers].sort((a, b) => {
+        const scoreA = calculatePlayerScore(a);
+        const scoreB = calculatePlayerScore(b);
+        return scoreB - scoreA;
+      });
+      
+      setTopThreeNation(sortedPlayers);
+    }
+  };
+  
+
   const handleCalculateTopPlayers = () => {
     if (selectedTeam) {
       const budget = selectedTeam.budget;
       const sortedPlayers = [...players].sort((a, b) => {
         const scoreA = calculatePlayerScore(a);
+        console.log(scoreA+a.name);
         const scoreB = calculatePlayerScore(b);
         return scoreB - scoreA;
       });
@@ -107,9 +172,9 @@ function Core() {
   
   return (
     <div>
-      <h1>Team Budget Analysis</h1>
+      <h1>Posibles Fichajes</h1>
       <div>
-        <label htmlFor="teamSelect">Select a team:</label>
+        <label htmlFor="teamSelect">Seleccione su equipo:</label>
         <select id="teamSelect" onChange={handleTeamChange}>
           <option value="">Select</option>
           {teams.map((team) => (
@@ -119,14 +184,37 @@ function Core() {
           ))}
         </select>
         <button onClick={handleCalculateTopPlayers} disabled={!selectedTeam}>
-          Calculate Top Players
+          Calcular mejores jugadores
         </button>
       </div>
       {topPlayers.length > 0 && (
         <div>
-          <h2>Top Players:</h2>
+          <h2>Lista de los mejores jugadores, puntaje y precio:</h2>
           <ul>
             {topPlayers.map((player) => (
+              <li key={player.id}>
+                {player.name} - Score: {calculatePlayerScore(player)} - Cost: {calculatePlayerCost(player)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <select id="teamSelect" onChange={handleNationChange}>
+          <option value="">Select</option>
+          {nationsAmount.map((team) => (
+            <option key={team.id} value={team.id}>
+              {nationsAmount.find((national)=>national.id==team.id).nation_name}
+            </option>
+          ))}
+        </select>
+        <button onClick={handleCalculateTopPlayersNation} disabled={!nation}>
+          Calcular mejores jugadores
+        </button>
+        {topThreeNation.length > 0 && (
+        <div>
+          <h2>Lista de los mejores jugadores, puntaje y precio:</h2>
+          <ul>
+            {topThreeNation.map((player) => (
               <li key={player.id}>
                 {player.name} - Score: {calculatePlayerScore(player)} - Cost: {calculatePlayerCost(player)}
               </li>
