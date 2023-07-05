@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, Fragment } from "react";
 import { supabase } from "./supabaseClient";
 
 function TableCRUD({ tableName, columns }) {
@@ -24,8 +24,8 @@ function TableCRUD({ tableName, columns }) {
       console.error("Error creating row:", error);
       return;
     }
-    console.log("New", newRow)
-    console.log([...data, newRow])
+    console.log("New", newRow);
+    console.log([...data, newRow]);
     setData([...data, newRow]);
     setNewRow({});
   }
@@ -70,41 +70,41 @@ function TableCRUD({ tableName, columns }) {
         </thead>
         <tbody>
           {data.map((row) => {
-            // console.log(data)
             return (
               <tr key={row !== null ? row.id : 0}>
                 {columns.map((column) => {
                   return (
-                    <td key={column?.name}>
+                    <td key={column && column.name}>
                       {row ? row[column.name] : "invalid"}
                     </td>
                   );
                 })}
                 <td>
-                  {editingRow === row.id ? (
-                    <>
-                      <button onClick={() => updateRow(row.id, newRow)}>
-                        Save
-                      </button>
-                      <button onClick={() => setEditingRow(null)}>
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditingRow(row.id);
-                          setEditedRow(row);
-                        }}
-                      >
-                        Edit
-                      </button>
+  {editingRow === row.id ? (
+    <Fragment>
+      <button onClick={() => updateRow(row.id, editedRow)}>
+        Save
+      </button>
+      <button onClick={() => setEditingRow(null)}>
+        Cancel
+      </button>
+    </Fragment>
+  ) : (
+    <Fragment>
+      <button
+        onClick={() => {
+          setEditingRow(row.id);
+          setEditedRow(row);
+        }}
+      >
+        Edit
+      </button>
 
-                      <button onClick={() => deleteRow(row.id)}>Delete</button>
-                    </>
-                  )}
-                </td>
+      <button onClick={() => deleteRow(row.id)}>Delete</button>
+    </Fragment>
+  )}
+</td>
+
               </tr>
             );
           })}
@@ -153,21 +153,8 @@ function TableCRUD({ tableName, columns }) {
         </tbody>
       </table>
       <button onClick={() => setEditingRow("new")}>Add row</button>
-    </div>  
+    </div>
   );
-  function ResetButton() {
-    function handleResetClick() {
-      window.location.reload();
-    }
-  
-    return (
-      <button onClick={handleResetClick}>Reset</button>
-    );
-    
-  }
-  
-  
 }
 
 export default TableCRUD;
-

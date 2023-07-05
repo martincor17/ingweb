@@ -14,7 +14,8 @@ function App() {
       setSession(session);
 
       // Retrieve user's email from the session
-      const userEmail = session.user.email;
+      const userEmail = session && session.user && session.user.email;
+      console.log(session);
 
       // Query the 'users' table to check if the user is an admin
       supabase
@@ -42,7 +43,7 @@ function App() {
     <div>
       {session ? (
         !isAdmin ? (
-          <Core/>
+          <Core />
         ) : (
           <CrudForm />
         )
